@@ -12,7 +12,7 @@ export async function user(userId: number) {
   _user.use(express.json());
   _user.use(bodyParser.json());
 
-  // TODO implement the status route
+  // 1.1
   _user.get("/status", (req, res) => {
     res.send("live")
   });
