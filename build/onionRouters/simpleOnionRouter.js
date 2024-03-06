@@ -11,9 +11,22 @@ async function simpleOnionRouter(nodeId) {
     const onionRouter = (0, express_1.default)();
     onionRouter.use(express_1.default.json());
     onionRouter.use(body_parser_1.default.json());
-    // TODO implement the status route
+    // 1.1
     onionRouter.get("/status", (req, res) => {
         res.send("live");
+    });
+    // 2.1
+    let lastReceivedEncryptedMessage = null;
+    let lastReceivedDecryptedMessage = null;
+    let lastMessageDestination = null;
+    onionRouter.get("/getLastReceivedEncryptedMessage", (req, res) => {
+        res.json({ result: lastReceivedEncryptedMessage });
+    });
+    onionRouter.get("/getLastReceivedDecryptedMessage", (req, res) => {
+        res.json({ result: lastReceivedDecryptedMessage });
+    });
+    onionRouter.get("/getLastMessageDestination", (req, res) => {
+        res.json({ result: lastMessageDestination });
     });
     const server = onionRouter.listen(config_1.BASE_ONION_ROUTER_PORT + nodeId, () => {
         console.log(`Onion router ${nodeId} is listening on port ${config_1.BASE_ONION_ROUTER_PORT + nodeId}`);
