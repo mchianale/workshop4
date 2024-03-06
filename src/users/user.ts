@@ -31,9 +31,15 @@ export async function user(userId: number) {
 
   // 4
   _user.post("/message", (req, res) => {
-    const { message }: { message: string } = req.body;
-    lastReceivedMessage = message;
-    res.send('success to send');
+    const { message }: { message: any} = req.body;
+    if (!message) {
+      lastReceivedMessage = '';
+      res.send('send empty message');
+    }
+    else {
+      lastReceivedMessage = message;
+      res.send('success to send');
+    }
   });
 
   _user.post("/sendMessage", (req, res) => {

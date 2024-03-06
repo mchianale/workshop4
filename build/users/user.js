@@ -27,8 +27,14 @@ async function user(userId) {
     // 4
     _user.post("/message", (req, res) => {
         const { message } = req.body;
-        lastReceivedMessage = message;
-        res.send('success to send');
+        if (!message) {
+            lastReceivedMessage = null;
+            res.send('send empty message');
+        }
+        else {
+            lastReceivedMessage = message;
+            res.send('success to send');
+        }
     });
     _user.post("/sendMessage", (req, res) => {
         const { message, destinationUserId } = req.body;
