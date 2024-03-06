@@ -35,6 +35,11 @@ async function launchRegistry() {
             res.status(404).json({ error: "Node wasn't find" });
         }
     });
+    // 3.3
+    _registry.get("/getNodeRegistry", (req, res) => {
+        const nodeRegistry = { nodes: registeredNodes };
+        res.json(nodeRegistry);
+    });
     const server = _registry.listen(config_1.REGISTRY_PORT, () => {
         console.log(`registry is listening on port ${config_1.REGISTRY_PORT}`);
     });

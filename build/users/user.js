@@ -24,6 +24,17 @@ async function user(userId) {
     _user.get("/getLastSentMessage", (req, res) => {
         res.json({ result: lastSentMessage });
     });
+    // 4
+    _user.post("/message", (req, res) => {
+        const { message } = req.body;
+        lastReceivedMessage = message;
+        res.send('success to send');
+    });
+    _user.post("/sendMessage", (req, res) => {
+        const { message, destinationUserId } = req.body;
+        lastSentMessage = message;
+        res.json({ success: true });
+    });
     const server = _user.listen(config_1.BASE_USER_PORT + userId, () => {
         console.log(`User ${userId} is listening on port ${config_1.BASE_USER_PORT + userId}`);
     });
