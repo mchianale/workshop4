@@ -16,30 +16,30 @@ async function user(userId) {
         res.send("live");
     });
     //2.2
-    let lastReceivedMessage = null;
-    let lastSentMessage = null;
+    let prevMessageReceived = null;
+    let prevMessageSend = null;
     _user.get("/getLastReceivedMessage", (req, res) => {
-        res.json({ result: lastReceivedMessage });
+        return res.json({ result: prevMessageReceived });
     });
     _user.get("/getLastSentMessage", (req, res) => {
-        res.json({ result: lastSentMessage });
+        return res.json({ result: prevMessageSend });
     });
     // 4
     _user.post("/message", (req, res) => {
         const { message } = req.body;
         if (!message) {
-            lastReceivedMessage = null;
-            res.send('send empty message');
+            prevMessageReceived = '';
+            return res.send('send empty message');
         }
         else {
-            lastReceivedMessage = message;
-            res.send('success to send');
+            prevMessageReceived = message;
+            return res.send('success to send');
         }
     });
     _user.post("/sendMessage", (req, res) => {
         const { message, destinationUserId } = req.body;
-        lastSentMessage = message;
-        res.json({ success: true });
+        prevMessageSend = message;
+        return res.json({ success: true });
     });
     const server = _user.listen(config_1.BASE_USER_PORT + userId, () => {
         console.log(`User ${userId} is listening on port ${config_1.BASE_USER_PORT + userId}`);

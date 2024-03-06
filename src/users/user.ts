@@ -18,34 +18,34 @@ export async function user(userId: number) {
   });
 
   //2.2
-  let lastReceivedMessage: string | null = null;
-  let lastSentMessage: string | null = null;
+  let prevMessageReceived: string | null = null;
+  let prevMessageSend: string | null = null;
 
   _user.get("/getLastReceivedMessage", (req, res) => {
-    res.json({ result: lastReceivedMessage });
+    return res.json({ result: prevMessageReceived });
   });
 
   _user.get("/getLastSentMessage", (req, res) => {
-    res.json({ result: lastSentMessage });
+    return res.json({ result: prevMessageSend });
   });
 
   // 4
   _user.post("/message", (req, res) => {
     const { message }: { message: any} = req.body;
     if (!message) {
-      lastReceivedMessage = '';
-      res.send('send empty message');
+      prevMessageReceived = '';
+      return res.send('send empty message');
     }
     else {
-      lastReceivedMessage = message;
-      res.send('success to send');
+      prevMessageReceived = message;
+      return res.send('success to send');
     }
   });
 
   _user.post("/sendMessage", (req, res) => {
     const { message, destinationUserId }: SendMessageBody = req.body;
-    lastSentMessage = message;
-    res.json({ success: true });
+    prevMessageSend = message;
+    return res.json({ success: true });
   });
 
   const server = _user.listen(BASE_USER_PORT + userId, () => {

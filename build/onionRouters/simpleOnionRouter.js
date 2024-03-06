@@ -13,20 +13,20 @@ async function simpleOnionRouter(nodeId) {
     onionRouter.use(body_parser_1.default.json());
     // 1.1
     onionRouter.get("/status", (req, res) => {
-        res.send("live");
+        return res.send("live");
     });
     // 2.1
-    let lastReceivedEncryptedMessage = null;
-    let lastReceivedDecryptedMessage = null;
-    let lastMessageDestination = null;
+    let prevReceivedEncryptedMessage = null;
+    let prevReceivedDecryptedMessage = null;
+    let prevDestination = null;
     onionRouter.get("/getLastReceivedEncryptedMessage", (req, res) => {
-        res.json({ result: lastReceivedEncryptedMessage });
+        return res.json({ result: prevReceivedEncryptedMessage });
     });
     onionRouter.get("/getLastReceivedDecryptedMessage", (req, res) => {
-        res.json({ result: lastReceivedDecryptedMessage });
+        return res.json({ result: prevReceivedDecryptedMessage });
     });
     onionRouter.get("/getLastMessageDestination", (req, res) => {
-        res.json({ result: lastMessageDestination });
+        return res.json({ result: prevDestination });
     });
     const server = onionRouter.listen(config_1.BASE_ONION_ROUTER_PORT + nodeId, () => {
         console.log(`Onion router ${nodeId} is listening on port ${config_1.BASE_ONION_ROUTER_PORT + nodeId}`);

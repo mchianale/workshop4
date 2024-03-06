@@ -15,30 +15,28 @@ async function launchRegistry() {
     _registry.use(body_parser_1.default.json());
     // 1.3
     _registry.get("/status", (req, res) => {
-        res.send("live");
+        return res.send("live");
     });
     // 3.1
     _registry.post("/registerNode", (req, res) => {
         const { nodeId, pubKey } = req.body;
         const newNode = { nodeId, pubKey };
         registeredNodes.push(newNode);
-        res.json({ success: true });
+        return res.json({ success: true });
     });
     // 3.2
     _registry.get("/getPrivateKey/:nodeId", (req, res) => {
         const nodeId = parseInt(req.params.nodeId, 10);
         const node = registeredNodes.find((n) => n.nodeId === nodeId);
-        if (node) {
-            res.json({ result: node.pubKey });
+        if (!node) {
+            return res.status(404).json({ error: "Node wasn't find" });
         }
-        else {
-            res.status(404).json({ error: "Node wasn't find" });
-        }
+        return res.json({ result: node.pubKey });
     });
     // 3.3
     _registry.get("/getNodeRegistry", (req, res) => {
         const nodeRegistry = { nodes: registeredNodes };
-        res.json(nodeRegistry);
+        return res.json(nodeRegistry);
     });
     const server = _registry.listen(config_1.REGISTRY_PORT, () => {
         console.log(`registry is listening on port ${config_1.REGISTRY_PORT}`);

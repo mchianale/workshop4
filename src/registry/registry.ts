@@ -22,7 +22,7 @@ export async function launchRegistry() {
 
   // 1.3
   _registry.get("/status", (req, res) => {
-    res.send("live");
+    return res.send("live");
   });
 
   // 3.1
@@ -30,25 +30,23 @@ export async function launchRegistry() {
     const { nodeId, pubKey } = req.body as RegisterNodeBody;
     const newNode: Node = { nodeId, pubKey };
     registeredNodes.push(newNode);
-    res.json({ success: true });
+    return res.json({ success: true });
   });
 
   // 3.2
   _registry.get("/getPrivateKey/:nodeId", (req, res) => {
     const nodeId = parseInt(req.params.nodeId, 10);
     const node = registeredNodes.find((n) => n.nodeId === nodeId);
-
-    if (node) {
-      res.json({ result: node.pubKey });
-    } else {
-      res.status(404).json({ error: "Node wasn't find" });
+    if (!node) {
+      return res.status(404).json({ error: "Node wasn't find" });
     }
+    return res.json({ result: node.pubKey });
   });
 
   // 3.3
   _registry.get("/getNodeRegistry", (req, res) => {
     const nodeRegistry: GetNodeRegistryBody = { nodes: registeredNodes };
-    res.json(nodeRegistry);
+    return res.json(nodeRegistry);
   });
 
   const server = _registry.listen(REGISTRY_PORT, () => {
