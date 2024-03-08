@@ -33,14 +33,12 @@ export async function user(userId: number) {
 
   // 4
   _user.post("/message", (req, res) => {
-    const { message }: { message: any} = req.body;
-    if (!message) {
-      prevMessageReceived = '';
-      return res.send('send empty message');
-    }
-    else {
-      prevMessageReceived = message;
-      return res.send('success to send');
+    if (req.body.message) {
+      prevMessageReceived  = req.body.message;
+      console.log('Received message:', req.body.message);
+      return res.status(200).send("success");
+    } else {
+      return res.status(400).json({ error: 'Request body must contain a message property' });
     }
   });
 
@@ -52,7 +50,7 @@ export async function user(userId: number) {
       // Fetch all nodes from the registry
       const response = await fetch(`http://localhost:${REGISTRY_PORT}/getNodeRegistry`);
       if (!response.ok) {
-        throw new Error(`Failed to fetch nodes from the registry. Status: ${response.status}`);
+        return res.status(500).json({ error: 'An error occurred to GET registered nodes' });
       }
 
       const body = await response.json() as { nodes: Node[] };
@@ -67,7 +65,7 @@ export async function user(userId: number) {
       const path = registeredNodes.slice(0, 3);
 
       // Prepare the message
-      let messageToSend = message;
+      let messageToSend = prevMessageSend ;
       if (!messageToSend) {
         return res.status(400).json({ error: 'Request body must contain a message property' });
       }
@@ -97,7 +95,7 @@ export async function user(userId: number) {
         },
       });
 
-      prevMessageSend = message;
+
       return res.json({ success: true });
     } catch (error) {
       console.error(error);

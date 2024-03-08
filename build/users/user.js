@@ -27,14 +27,13 @@ async function user(userId) {
     });
     // 4
     _user.post("/message", (req, res) => {
-        const { message } = req.body;
-        if (!message) {
-            prevMessageReceived = '';
-            return res.send('send empty message');
+        if (req.body.message) {
+            prevMessageReceived = req.body.message;
+            console.log('Received message:', req.body.message);
+            return res.status(200).send("success");
         }
         else {
-            prevMessageReceived = message;
-            return res.send('success to send');
+            return res.status(400).json({ error: 'Request body must contain a message property' });
         }
     });
     _user.post("/sendMessage", async (req, res) => {
@@ -44,7 +43,7 @@ async function user(userId) {
             // Fetch all nodes from the registry
             const response = await fetch(`http://localhost:${config_1.REGISTRY_PORT}/getNodeRegistry`);
             if (!response.ok) {
-                throw new Error(`Failed to fetch nodes from the registry. Status: ${response.status}`);
+                return res.status(500).json({ error: 'An error occurred to GET registered nodes' });
             }
             const body = await response.json();
             let registeredNodes = body.nodes; // Define the type of registeredNodes

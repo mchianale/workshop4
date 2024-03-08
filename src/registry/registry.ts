@@ -26,21 +26,37 @@ export async function launchRegistry() {
   });
 
   // 3.1
-  _registry.post("/registerNode", (req, res) => {
-    const { nodeId, pubKey } = req.body
-    // check if pubKey not already in all nodes
-    let keyExists = false;
-    registeredNodes.forEach((node) => {
-      if (node.pubKey === pubKey) {
-        keyExists = true;
+  _registry.post("/registerNode", async (req, res) => {
+    try {
+      const { nodeId, pubKey } = req.body;
+
+      // Check if nodeId already exists
+      const nodeIdExists = registeredNodes.some(node => node.nodeId === nodeId);
+      if (nodeIdExists) {
+        return res.json({ success: false, error: 'Node ID already exists' });
       }
-    });
-    if (keyExists) {
-      return res.json({ success: false });
+
+      // Check if pubKey is in the right format
+      // Assuming pubKey is a base64 encoded string
+      const isValidPubKey = /^[a-zA-Z0-9+/]+={0,2}$/.test(pubKey);
+      if (!isValidPubKey) {
+        return res.json({ success: false, error: 'Invalid public key format' });
+      }
+
+      // Check if pubKey already exists
+      const pubKeyExists = registeredNodes.some(node => node.pubKey === pubKey);
+      if (pubKeyExists) {
+        return res.json({ success: false, error: 'Public key already exists' });
+      }
+
+      // If all checks pass, register the node
+      const newNode: Node = { nodeId, pubKey };
+      registeredNodes.push(newNode);
+      return res.json({ success: true });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ error: 'An error occurred while processing the request' });
     }
-    const newNode: Node = { nodeId, pubKey };
-    registeredNodes.push(newNode);
-    return res.json({ success: true });
   });
 
   // 3.2
