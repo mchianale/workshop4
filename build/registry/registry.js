@@ -20,6 +20,16 @@ async function launchRegistry() {
     // 3.1
     _registry.post("/registerNode", (req, res) => {
         const { nodeId, pubKey } = req.body;
+        // check if pubKey not already in all nodes
+        let keyExists = false;
+        registeredNodes.forEach((node) => {
+            if (node.pubKey === pubKey) {
+                keyExists = true;
+            }
+        });
+        if (keyExists) {
+            return res.json({ success: false });
+        }
         const newNode = { nodeId, pubKey };
         registeredNodes.push(newNode);
         return res.json({ success: true });
@@ -35,8 +45,8 @@ async function launchRegistry() {
     });
     // 3.3
     _registry.get("/getNodeRegistry", (req, res) => {
-        const nodeRegistry = { nodes: registeredNodes };
-        return res.json(nodeRegistry);
+        const payload = { nodes: registeredNodes };
+        return res.json(payload);
     });
     const server = _registry.listen(config_1.REGISTRY_PORT, () => {
         console.log(`registry is listening on port ${config_1.REGISTRY_PORT}`);

@@ -171,7 +171,6 @@ describe("Onion Routing", () => {
           )
             .then((res) => res.text())
             .then((text) => text === "live");
-
           expect(isNodeLive).toBeTruthy();
         }
 
@@ -329,7 +328,6 @@ describe("Onion Routing", () => {
         for (let index = 0; index < nodes.length; index++) {
           pubKeys.add(nodes[index].pubKey);
         }
-
         expect(pubKeys.size).toBe(10);
       });
 
