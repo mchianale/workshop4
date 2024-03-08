@@ -12,62 +12,65 @@ async function simpleOnionRouter(nodeId) {
     const onionRouter = (0, express_1.default)();
     onionRouter.use(express_1.default.json());
     onionRouter.use(body_parser_1.default.json());
-    // 1.1
-    onionRouter.get("/status", (req, res) => {
-        return res.send("live");
-    });
-    // 2.1
-    let prevReceivedEncryptedMessage = null;
-    let prevReceivedDecryptedMessage = null;
+    let prevMessageEncryptReceived = null;
+    let prevMessageDecryptReceived = null;
     let prevDestination = null;
+    // 3.2
     const { publicKey, privateKey } = await (0, crypto_1.generateRsaKeyPair)();
     const pubKeyB64 = await (0, crypto_1.exportPubKey)(publicKey);
     const privKeyB64 = await (0, crypto_1.exportPrvKey)(privateKey);
+    // 1.1
+    onionRouter.get("/status", (req, res) => {
+        res.send("live");
+    });
+    // 2.1
     onionRouter.get("/getLastReceivedEncryptedMessage", (req, res) => {
-        return res.json({ result: prevReceivedEncryptedMessage });
+        res.json({ result: prevMessageEncryptReceived });
     });
     onionRouter.get("/getLastReceivedDecryptedMessage", (req, res) => {
-        return res.json({ result: prevReceivedDecryptedMessage });
+        res.json({ result: prevMessageDecryptReceived });
     });
     onionRouter.get("/getLastMessageDestination", (req, res) => {
-        return res.json({ result: prevDestination });
+        res.json({ result: prevDestination });
     });
+    // 3.2
     onionRouter.get("/getPrivateKey", (req, res) => {
-        return res.json({ result: privKeyB64 });
+        res.json({ result: privKeyB64 });
     });
-    try {
-        const response = await fetch(`http://localhost:${config_1.REGISTRY_PORT}/registerNode`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                nodeId: nodeId,
-                pubKey: pubKeyB64,
-            }),
-        });
+    const response = await fetch(`http://localhost:${config_1.REGISTRY_PORT}/registerNode`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            nodeId: nodeId,
+            pubKey: pubKeyB64,
+        }),
+    });
+    if (!response.ok) {
+        throw new Error("Node failed to register");
     }
-    catch (error) {
-        console.error(error);
-        // Handle the error appropriately
-    }
+    // 6.2
     onionRouter.post("/message", async (req, res) => {
         const layer = req.body.message;
-        const encryptedSymKey = layer.slice(0, 344);
-        const symKey = privKeyB64 ? await (0, crypto_1.rsaDecrypt)(encryptedSymKey, await (0, crypto_1.importPrvKey)(privKeyB64)) : null;
-        const encryptedMessage = layer.slice(344);
-        const message = symKey ? await (0, crypto_1.symDecrypt)(symKey, encryptedMessage) : null;
-        prevReceivedEncryptedMessage = layer;
-        prevReceivedDecryptedMessage = message ? message.slice(10) : null;
-        prevDestination = message ? parseInt(message.slice(0, 10), 10) : null;
+        if (!layer) {
+            res.status(400).json({ error: 'error with current layer' });
+        }
+        const encryptedKey = layer.slice(0, 344);
+        const Key = privKeyB64 ? await (0, crypto_1.rsaDecrypt)(encryptedKey, await (0, crypto_1.importPrvKey)(privKeyB64)) : null;
+        const msgEncrypted = layer.slice(344);
+        const msg = Key ? await (0, crypto_1.symDecrypt)(Key, msgEncrypted) : null;
+        prevMessageDecryptReceived = msg ? msg.slice(10) : null;
+        prevDestination = msg ? parseInt(msg.slice(0, 10), 10) : null;
+        prevMessageEncryptReceived = layer;
         await fetch(`http://localhost:${prevDestination}/message`, {
             method: "POST",
-            body: JSON.stringify({ message: prevReceivedDecryptedMessage }),
+            body: JSON.stringify({ message: prevMessageDecryptReceived }),
             headers: {
                 "Content-Type": "application/json",
             },
         });
-        return res.json({ success: true });
+        res.send("success");
     });
     const server = onionRouter.listen(config_1.BASE_ONION_ROUTER_PORT + nodeId, () => {
         console.log(`Onion router ${nodeId} is listening on port ${config_1.BASE_ONION_ROUTER_PORT + nodeId}`);

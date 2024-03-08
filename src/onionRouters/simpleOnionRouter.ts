@@ -8,71 +8,74 @@ export async function simpleOnionRouter(nodeId: number) {
   onionRouter.use(express.json());
   onionRouter.use(bodyParser.json());
 
-  // 1.1
-  onionRouter.get("/status", (req, res) => {
-    return res.send("live");
-  });
-
-  // 2.1
-  let prevReceivedEncryptedMessage: any = null;
-  let prevReceivedDecryptedMessage: any = null;
-  let prevDestination: any = null;
-
+  let prevMessageEncryptReceived: string | null = null;
+  let prevMessageDecryptReceived: string | null = null;
+  let prevDestination: number | null = null;
+  // 3.2
   const { publicKey, privateKey } = await generateRsaKeyPair();
   const pubKeyB64 = await exportPubKey(publicKey);
   const privKeyB64 = await exportPrvKey(privateKey);
 
+  // 1.1
+  onionRouter.get("/status", (req, res) => {
+    res.send("live");
+  });
+  // 2.1
   onionRouter.get("/getLastReceivedEncryptedMessage", (req, res) => {
-    return res.json({ result: prevReceivedEncryptedMessage });
+    res.json({ result: prevMessageEncryptReceived });
   });
 
   onionRouter.get("/getLastReceivedDecryptedMessage", (req, res) => {
-    return res.json({ result: prevReceivedDecryptedMessage });
+    res.json({ result: prevMessageDecryptReceived });
   });
 
   onionRouter.get("/getLastMessageDestination", (req, res) => {
-    return res.json({ result: prevDestination });
+    res.json({ result: prevDestination });
   });
 
+  // 3.2
   onionRouter.get("/getPrivateKey", (req, res) => {
-    return res.json({ result: privKeyB64 });
+    res.json({ result: privKeyB64 });
   });
 
-  try {
-    const response = await fetch(`http://localhost:${REGISTRY_PORT}/registerNode`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        nodeId: nodeId,
-        pubKey: pubKeyB64,
-      }),
-    });
+  const response = await fetch(`http://localhost:${REGISTRY_PORT}/registerNode`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      nodeId: nodeId,
+      pubKey: pubKeyB64,
+    }),
+  });
 
-
-  } catch (error) {
-    console.error(error);
-    // Handle the error appropriately
+  if (!response.ok) {
+    throw new Error("Node failed to register");
   }
-
+ // 6.2
   onionRouter.post("/message", async (req, res) => {
     const layer = req.body.message;
-    const encryptedSymKey = layer.slice(0, 344);
-    const symKey = privKeyB64 ? await rsaDecrypt(encryptedSymKey, await importPrvKey(privKeyB64)) : null;
-    const encryptedMessage = layer.slice(344) as string;
-    const message = symKey ? await symDecrypt(symKey, encryptedMessage) : null;
-    prevReceivedEncryptedMessage = layer;
-    prevReceivedDecryptedMessage = message ? message.slice(10) : null;
-    prevDestination = message ? parseInt(message.slice(0, 10), 10) : null;
+    if(!layer){
+      res.status(400).json({ error: 'error with current layer' });
+    }
+    const encryptedKey = layer.slice(0, 344);
+    const Key = privKeyB64 ? await rsaDecrypt(encryptedKey, await importPrvKey(privKeyB64)) : null;
+    const msgEncrypted = layer.slice(344) as string;
+    const msg = Key ? await symDecrypt(Key, msgEncrypted) : null;
+
+
+    prevMessageDecryptReceived = msg ? msg.slice(10) : null;
+    prevDestination = msg ? parseInt(msg.slice(0, 10), 10) : null;
+    prevMessageEncryptReceived = layer;
     await fetch(`http://localhost:${prevDestination}/message`, {
       method: "POST",
-      body: JSON.stringify({ message: prevReceivedDecryptedMessage }),
+      body: JSON.stringify({ message: prevMessageDecryptReceived }),
       headers: {
         "Content-Type": "application/json",
       },
     });
-    return res.json({ success: true });
+
+    res.send("success");
   });
 
   const server = onionRouter.listen(BASE_ONION_ROUTER_PORT + nodeId, () => {

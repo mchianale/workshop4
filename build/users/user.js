@@ -6,88 +6,75 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.user = void 0;
 const body_parser_1 = __importDefault(require("body-parser"));
 const express_1 = __importDefault(require("express"));
-const config_1 = require("../config");
 const crypto_1 = require("../crypto");
+const config_1 = require("../config");
 async function user(userId) {
     const _user = (0, express_1.default)();
     _user.use(express_1.default.json());
     _user.use(body_parser_1.default.json());
-    // 1.1
+    let prevMessageSent = null;
+    let prevMessageReceived = null;
+    let pathTemp = [];
+    // 1.2
     _user.get("/status", (req, res) => {
         res.send("live");
     });
-    //2.2
-    let prevMessageReceived = null;
-    let prevMessageSend = null;
+    // 2.2
     _user.get("/getLastReceivedMessage", (req, res) => {
-        return res.json({ result: prevMessageReceived });
+        res.json({ result: prevMessageReceived });
     });
     _user.get("/getLastSentMessage", (req, res) => {
-        return res.json({ result: prevMessageSend });
+        res.json({ result: prevMessageSent });
     });
-    // 4
-    _user.post("/message", (req, res) => {
-        if (req.body.message) {
-            prevMessageReceived = req.body.message;
-            console.log('Received message:', req.body.message);
-            return res.status(200).send("success");
-        }
-        else {
-            return res.status(400).json({ error: 'Request body must contain a message property' });
-        }
+    _user.get("/getLastCircuit", (req, res) => {
+        res.json({ result: pathTemp.map((node) => node.nodeId) });
     });
+    // 6.1
     _user.post("/sendMessage", async (req, res) => {
         const { message, destinationUserId } = req.body;
-        prevMessageSend = message;
-        try {
-            // Fetch all nodes from the registry
-            const response = await fetch(`http://localhost:${config_1.REGISTRY_PORT}/getNodeRegistry`);
-            if (!response.ok) {
-                return res.status(500).json({ error: 'An error occurred to GET registered nodes' });
-            }
-            const body = await response.json();
-            let registeredNodes = body.nodes; // Define the type of registeredNodes
-            registeredNodes = registeredNodes.map((node, i, arr) => {
-                const j = Math.floor(Math.random() * (i + 1));
-                [arr[i], arr[j]] = [arr[j], arr[i]];
-                return node;
-            });
-            // Select intermediary nodes for the circuit
-            const path = registeredNodes.slice(0, 3);
-            // Prepare the message
-            let messageToSend = message;
-            if (!messageToSend) {
-                return res.status(400).json({ error: 'Request body must contain a message property' });
-            }
-            // Iterate through the circuit and encrypt the message
-            for (let i = path.length - 1; i >= 0; i--) {
-                const node = path[i];
-                const symKey = await (0, crypto_1.createRandomSymmetricKey)();
-                const destination = i === path.length - 1 ?
-                    `${config_1.BASE_USER_PORT + destinationUserId}`.padStart(10, '0') :
-                    `${config_1.BASE_ONION_ROUTER_PORT + path[i + 1].nodeId}`.padStart(10, '0');
-                console.log(destination);
-                const messageToEncrypt = `${destination + messageToSend}`;
-                const encryptedMessage = await (0, crypto_1.symEncrypt)(symKey, messageToEncrypt);
-                const encryptedSymKey = await (0, crypto_1.rsaEncrypt)(await (0, crypto_1.exportSymKey)(symKey), node.pubKey);
-                messageToSend = encryptedSymKey + encryptedMessage;
-            }
-            // Send the message to the first node in the circuit
-            const entryNode = path[0];
-            const lastPath = path;
-            await fetch(`http://localhost:${config_1.BASE_ONION_ROUTER_PORT + entryNode.nodeId}/message`, {
-                method: "POST",
-                body: JSON.stringify({ message: messageToSend }),
-                headers: {
-                    "Content-Type": "application/json",
-                },
-            });
-            prevMessageSend = message;
-            return res.json({ success: true });
+        const nodes = await fetch(`http://localhost:${config_1.REGISTRY_PORT}/getNodeRegistry`)
+            .then((res) => res.json())
+            .then((body) => body.nodes);
+        let path = [];
+        const shuffledNodes = nodes.sort(() => Math.random() - 0.5);
+        path = shuffledNodes.slice(0, 3);
+        let msg = message;
+        if (!msg || msg.trim() === '') {
+            res.status(400).json({ error: "The message can't be empty" });
+            return;
         }
-        catch (error) {
-            console.error(error);
-            return res.status(500).json({ error: 'An error occurred while processing the request' });
+        let i = path.length - 1;
+        while (i >= 0) {
+            const node = path[i];
+            const symKey = await (0, crypto_1.createRandomSymmetricKey)();
+            const destination = i === path.length - 1 ?
+                `${config_1.BASE_USER_PORT + destinationUserId}`.padStart(10, '0') :
+                `${config_1.BASE_ONION_ROUTER_PORT + path[i + 1].nodeId}`.padStart(10, '0');
+            const encryptedMSG = await (0, crypto_1.symEncrypt)(symKey, `${destination}${msg}`);
+            const encryptedKey = await (0, crypto_1.rsaEncrypt)(await (0, crypto_1.exportSymKey)(symKey), node.pubKey);
+            msg = encryptedKey + encryptedMSG;
+            i--;
+        }
+        const currentNode = path[0];
+        pathTemp = path;
+        await fetch(`http://localhost:${config_1.BASE_ONION_ROUTER_PORT + currentNode.nodeId}/message`, {
+            method: "POST",
+            body: JSON.stringify({ message: msg }),
+            headers: {
+                "Content-Type": "application/json",
+            },
+        });
+        prevMessageSent = message;
+        res.send("success");
+    });
+    // 6.2
+    _user.post("/message", (req, res) => {
+        prevMessageReceived = req.body.message;
+        if (prevMessageReceived) {
+            res.status(200).send("success");
+        }
+        else {
+            res.status(400).json({ error: 'message must not be empty' });
         }
     });
     const server = _user.listen(config_1.BASE_USER_PORT + userId, () => {
